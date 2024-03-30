@@ -76,3 +76,7 @@ class Room(Base):
                 f"_matrix/client/v3/rooms/{self.room_id}/messages",
                 params={"from": messages["end"]},
             )
+
+    async def send_text_message(self, content: str) -> None:
+        """Send a text message to the room."""
+        await self._client.send_text_message(self.room_id, content)

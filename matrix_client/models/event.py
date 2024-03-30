@@ -39,3 +39,13 @@ class Event(Base):
     def age(self) -> datetime.timedelta:
         """Return the age."""
         return datetime.timedelta(milliseconds=self._age)
+
+    async def redact(self, reason: str | None = None) -> None:
+        """Redact the event."""
+        await self._client.send_redaction(self._room, self.event_id, reason)
+
+    async def reply(self, content: str) -> None:
+        """Reply to the event."""
+        await self._client.send_text_message(
+            self._room, content, reply_to=self.event_id
+        )

@@ -1,4 +1,5 @@
 import asyncio
+import uuid
 
 import aiohttp
 
@@ -79,6 +80,50 @@ class Client:
                 headers={"Authorization": f"Bearer {await self.get_token()}"},
             ) as response:
                 return await response.read()
+
+    async def _send_event(self, room_id: str, event_type: str, content: dict) -> None:
+        """Send an event to a room."""
+        await self._request(
+            "PUT",
+            f"_matrix/client/v3/rooms/{room_id}/send/{event_type}/{uuid.uuid4()}",
+            json=content,
+        )
+
+    async def send_text_message(
+        self, room_id: str, content: str, reply_to: str | None = None
+    ) -> None:
+        """Send a text message to a room."""
+        await self._send_event(
+            room_id,
+            "m.room.message",
+            {
+                "msgtype": "m.text",
+                "body": content,
+            }
+            if reply_to is None
+            else {
+                "msgtype": "m.text",
+                "body": content,
+                "m.relates_to": {"m.in_reply_to": {"event_id": reply_to}},
+            },
+        )
+
+    async def send_redaction(
+        self, room_id: str, event_id: str, reason: str | None = None
+    ) -> None:
+        """Send a redaction to a room."""
+        await self._send_event(
+            room_id,
+            "m.room.redaction",
+            {
+                "redacts": event_id,
+            }
+            if reason is None
+            else {
+                "redacts": event_id,
+                "reason": reason,
+            },
+        )
 
     async def whoami(self) -> Myself:
         """Get information about the authenticated user."""
