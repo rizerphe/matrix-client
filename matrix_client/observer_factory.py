@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Awaitable, Callable, Type, TypeVar, overload
+from typing import Awaitable, Callable, Literal, Type, TypeVar, overload
 
 from .event_dispatcher import (
     Context,
@@ -143,21 +143,132 @@ class ObserverFactory:
 
         return func
 
+    @overload
     def event(
         self,
-        func: Callable[[Context[Event]], Awaitable[None]] | None = None,
+        func: Callable[[Event], Awaitable[None]],
         *,
         room: str | None = None,
         once: bool = False,
+        pass_context: Literal[False] = False,
+    ) -> Callable[[Event], Awaitable[None]]:
+        ...
+
+    @overload
+    def event(
+        self,
+        func: None = None,
+        *,
+        room: str | None = None,
+        once: bool = False,
+        pass_context: Literal[False] = False,
+    ) -> Callable[
+        [Callable[[Event], Awaitable[None]]],
+        Callable[[Event], Awaitable[None]],
+    ]:
+        ...
+
+    @overload
+    def event(
+        self,
+        func: None = None,
+        *,
+        room: str | None = None,
+        once: bool = False,
+        pass_context: Literal[True],
+    ) -> Callable[
+        [Callable[[Context[Event]], Awaitable[None]]],
+        Callable[[Context[Event]], Awaitable[None]],
+    ]:
+        ...
+
+    @overload
+    def event(
+        self,
+        func: Callable[[Context[Event]], Awaitable[None]],
+        *,
+        room: str | None = None,
+        once: bool = False,
+        pass_context: Literal[True],
+    ) -> Callable[[Context[Event]], Awaitable[None]]:
+        ...
+
+    def event(
+        self,
+        func: Callable[[Event], Awaitable[None]]
+        | Callable[[Context[Event]], Awaitable[None]]
+        | None = None,
+        *,
+        room: str | None = None,
+        once: bool = False,
+        pass_context: bool = False,
     ) -> (
-        Callable[[Context[Event]], Awaitable[None]]
+        Callable[[Event], Awaitable[None]]
+        | Callable[[Context[Event]], Awaitable[None]]
+        | Callable[
+            [Callable[[Event], Awaitable[None]]],
+            Callable[[Event], Awaitable[None]],
+        ]
         | Callable[
             [Callable[[Context[Event]], Awaitable[None]]],
             Callable[[Context[Event]], Awaitable[None]],
         ]
     ):
         """Create an event observer."""
-        return self(func, room=room, once=once, on=None)
+        if pass_context:
+            # Once again mypy did a blep
+            return self(func, room=room, once=once, on=None)  # type: ignore
+        if func is None:
+
+            def decorator(
+                func: Callable[[Event], Awaitable[None]]
+            ) -> Callable[[Event], Awaitable[None]]:
+                return self.event(func, room=room, once=once)
+
+            return decorator
+
+        # I think it's a mlem and not a blep this time
+        self(lambda ctx: func(ctx.event), room=room, once=once, on=None)  # type: ignore
+        return func
+
+    @overload
+    def message(
+        self,
+        func: Callable[[MessageEvent], Awaitable[None]],
+        *,
+        room: str | None = None,
+        once: bool = False,
+        pass_context: Literal[False] = False,
+    ) -> Callable[[MessageEvent], Awaitable[None]]:
+        ...
+
+    @overload
+    def message(
+        self,
+        func: None = None,
+        *,
+        room: str | None = None,
+        once: bool = False,
+        pass_context: Literal[False] = False,
+    ) -> Callable[
+        [Callable[[MessageEvent], Awaitable[None]]],
+        Callable[[MessageEvent], Awaitable[None]],
+    ]:
+        ...
+
+    @overload
+    def message(
+        self,
+        func: None = None,
+        *,
+        room: str | None = None,
+        once: bool = False,
+        pass_context: Literal[True],
+    ) -> Callable[
+        [Callable[[Context[MessageEvent]], Awaitable[None]]],
+        Callable[[Context[MessageEvent]], Awaitable[None]],
+    ]:
+        ...
 
     @overload
     def message(
@@ -166,37 +277,86 @@ class ObserverFactory:
         *,
         room: str | None = None,
         once: bool = False,
+        pass_context: Literal[True],
     ) -> Callable[[Context[MessageEvent]], Awaitable[None]]:
         ...
 
-    @overload
     def message(
         self,
-        func: None = None,
+        func: Callable[[MessageEvent], Awaitable[None]]
+        | Callable[[Context[MessageEvent]], Awaitable[None]]
+        | None = None,
         *,
         room: str | None = None,
         once: bool = False,
-    ) -> Callable[
-        [Callable[[Context[MessageEvent]], Awaitable[None]]],
-        Callable[[Context[MessageEvent]], Awaitable[None]],
-    ]:
-        ...
-
-    def message(
-        self,
-        func: Callable[[Context[MessageEvent]], Awaitable[None]] | None = None,
-        *,
-        room: str | None = None,
-        once: bool = False,
+        pass_context: bool = False,
     ) -> (
-        Callable[[Context[MessageEvent]], Awaitable[None]]
+        Callable[[MessageEvent], Awaitable[None]]
+        | Callable[[Context[MessageEvent]], Awaitable[None]]
+        | Callable[
+            [Callable[[MessageEvent], Awaitable[None]]],
+            Callable[[MessageEvent], Awaitable[None]],
+        ]
         | Callable[
             [Callable[[Context[MessageEvent]], Awaitable[None]]],
             Callable[[Context[MessageEvent]], Awaitable[None]],
         ]
     ):
         """Create a message observer."""
-        return self(func, room=room, once=once, on=MessageEvent)
+        if pass_context:
+            # It's too late to think whether this is a blep or a mlem
+            # either way it's the same as in the previous method
+            return self(func, room=room, once=once, on=MessageEvent)
+        if func is None:
+
+            def decorator(
+                func: Callable[[MessageEvent], Awaitable[None]]
+            ) -> Callable[[MessageEvent], Awaitable[None]]:
+                return self.message(func, room=room, once=once)
+
+            return decorator
+
+        self(lambda ctx: func(ctx.event), room=room, once=once, on=MessageEvent)  # type: ignore
+        return func
+
+    @overload
+    def edit(
+        self,
+        func: Callable[[MessageEditEvent], Awaitable[None]],
+        *,
+        room: str | None = None,
+        once: bool = False,
+        pass_context: Literal[False] = False,
+    ) -> Callable[[MessageEditEvent], Awaitable[None]]:
+        ...
+
+    @overload
+    def edit(
+        self,
+        func: None = None,
+        *,
+        room: str | None = None,
+        once: bool = False,
+        pass_context: Literal[False] = False,
+    ) -> Callable[
+        [Callable[[MessageEditEvent], Awaitable[None]]],
+        Callable[[MessageEditEvent], Awaitable[None]],
+    ]:
+        ...
+
+    @overload
+    def edit(
+        self,
+        func: None = None,
+        *,
+        room: str | None = None,
+        once: bool = False,
+        pass_context: Literal[True],
+    ) -> Callable[
+        [Callable[[Context[MessageEditEvent]], Awaitable[None]]],
+        Callable[[Context[MessageEditEvent]], Awaitable[None]],
+    ]:
+        ...
 
     @overload
     def edit(
@@ -205,34 +365,43 @@ class ObserverFactory:
         *,
         room: str | None = None,
         once: bool = False,
+        pass_context: Literal[True],
     ) -> Callable[[Context[MessageEditEvent]], Awaitable[None]]:
         ...
 
-    @overload
     def edit(
         self,
-        func: None = None,
+        func: Callable[[MessageEditEvent], Awaitable[None]]
+        | Callable[[Context[MessageEditEvent]], Awaitable[None]]
+        | None = None,
         *,
         room: str | None = None,
         once: bool = False,
-    ) -> Callable[
-        [Callable[[Context[MessageEditEvent]], Awaitable[None]]],
-        Callable[[Context[MessageEditEvent]], Awaitable[None]],
-    ]:
-        ...
-
-    def edit(
-        self,
-        func: Callable[[Context[MessageEditEvent]], Awaitable[None]] | None = None,
-        *,
-        room: str | None = None,
-        once: bool = False,
+        pass_context: bool = False,
     ) -> (
-        Callable[[Context[MessageEditEvent]], Awaitable[None]]
+        Callable[[MessageEditEvent], Awaitable[None]]
+        | Callable[[Context[MessageEditEvent]], Awaitable[None]]
+        | Callable[
+            [Callable[[MessageEditEvent], Awaitable[None]]],
+            Callable[[MessageEditEvent], Awaitable[None]],
+        ]
         | Callable[
             [Callable[[Context[MessageEditEvent]], Awaitable[None]]],
             Callable[[Context[MessageEditEvent]], Awaitable[None]],
         ]
     ):
         """Create an edit observer."""
-        return self(func, room=room, once=once, on=MessageEditEvent)
+        if pass_context:
+            # It's the same as in the previous method
+            return self(func, room=room, once=once, on=MessageEditEvent)  # type: ignore
+        if func is None:
+
+            def decorator(
+                func: Callable[[MessageEditEvent], Awaitable[None]]
+            ) -> Callable[[MessageEditEvent], Awaitable[None]]:
+                return self.edit(func, room=room, once=once)
+
+            return decorator
+
+        self(lambda ctx: func(ctx.event), room=room, once=once, on=MessageEditEvent)  # type: ignore
+        return func

@@ -9,15 +9,15 @@ import os
 
 from dotenv import load_dotenv
 
-from matrix_client import Client, Context, MessageEvent
+from matrix_client import Client, MessageEvent
 
 
 client = Client("https://matrix.org")
 
 
 @client.on.message
-async def on_message(ctx: Context[MessageEvent]) -> None:
-    print(ctx.event)
+async def on_message(message: MessageEvent) -> None:
+    print(message)
 
 
 if __name__ == "__main__":
