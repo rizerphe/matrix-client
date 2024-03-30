@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
+import traceback
 from typing import Awaitable, Callable, Generic, Protocol, Type, TypeGuard, TypeVar
 
 from .models import Event
@@ -94,11 +95,16 @@ class EventDispatcher:
         self._observers.remove(observer)
 
     async def dispatch(self, event: Event) -> None:
-        await asyncio.gather(
-            *(
-                observer(
-                    Context(event=event, unsubscribe=lambda: self.unregister(observer))
-                )
-                for observer in self._observers
+        try:
+            await asyncio.gather(
+                *(
+                    observer(
+                        Context(
+                            event=event, unsubscribe=lambda: self.unregister(observer)
+                        )
+                    )
+                    for observer in self._observers
+                ),
             )
-        )
+        except Exception:
+            traceback.print_exc()
