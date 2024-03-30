@@ -228,6 +228,7 @@ class Client:
 
     async def sync(self) -> None:
         """Sync with the homeserver."""
+        is_initial = not self.next_batch
         self.new_events.clear()
         response = await self._request(
             "GET",
@@ -240,12 +241,13 @@ class Client:
             for event in room.get("timeline", {}).get("events", []):
                 await self.handle_event(room_id, event)
         self.events.extend(self.new_events)
-        for event in self.new_events:
-            queue = self.room_evt_queues.get(event._room)
-            if queue is None:
-                queue = self.room_evt_queues[event._room] = asyncio.Queue()
-                asyncio.create_task(self.run_event_observers(event._room))
-            await queue.put(event)
+        if not is_initial:
+            for event in self.new_events:
+                queue = self.room_evt_queues.get(event._room)
+                if queue is None:
+                    queue = self.room_evt_queues[event._room] = asyncio.Queue()
+                    asyncio.create_task(self.run_event_observers(event._room))
+                await queue.put(event)
         self.new_events = []
 
     async def run_event_observers(self, room_id: str) -> None:
