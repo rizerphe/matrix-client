@@ -49,7 +49,25 @@ class MessageEvent(Event):
     @property
     def message_type(self) -> MessageType:
         """Return the message type."""
-        return self.content.get("msgtype", MessageType.UNKNOWN)
+        match self.content.get("msgtype"):
+            case "m.text":
+                return MessageType.TEXT
+            case "m.notice":
+                return MessageType.NOTICE
+            case "m.emote":
+                return MessageType.EMOTE
+            case "m.image":
+                return MessageType.IMAGE
+            case "m.file":
+                return MessageType.FILE
+            case "m.audio":
+                return MessageType.AUDIO
+            case "m.video":
+                return MessageType.VIDEO
+            case "m.location":
+                return MessageType.LOCATION
+            case _:
+                return MessageType.UNKNOWN
 
     @property
     def body(self) -> str | None:

@@ -73,7 +73,7 @@ class Client:
 
     async def _download_mxc(self, mxc: str) -> bytes:
         """Download an mxc."""
-        server_name, media_id = mxc.lstrip("mxc://").split("/")
+        server_name, media_id = mxc[6:].split("/")
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 f"{self.homeserver_url}/_matrix/media/v3/download/{server_name}/{media_id}",

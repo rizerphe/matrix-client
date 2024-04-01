@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import Awaitable, Callable, Literal, Type, TypeVar, overload
 
+from matrix_client.models.redaction_event import RedactionEvent
+
 from .event_dispatcher import (
     Context,
     EventDispatcher,
@@ -404,4 +406,91 @@ class ObserverFactory:
             return decorator
 
         self(lambda ctx: func(ctx.event), room=room, once=once, on=MessageEditEvent)  # type: ignore
+        return func
+
+    @overload
+    def redaction(
+        self,
+        func: Callable[[RedactionEvent], Awaitable[None]],
+        *,
+        room: str | None = None,
+        once: bool = False,
+        pass_context: Literal[False] = False,
+    ) -> Callable[[RedactionEvent], Awaitable[None]]:
+        ...
+
+    @overload
+    def redaction(
+        self,
+        func: None = None,
+        *,
+        room: str | None = None,
+        once: bool = False,
+        pass_context: Literal[False] = False,
+    ) -> Callable[
+        [Callable[[RedactionEvent], Awaitable[None]]],
+        Callable[[RedactionEvent], Awaitable[None]],
+    ]:
+        ...
+
+    @overload
+    def redaction(
+        self,
+        func: None = None,
+        *,
+        room: str | None = None,
+        once: bool = False,
+        pass_context: Literal[True],
+    ) -> Callable[
+        [Callable[[Context[RedactionEvent]], Awaitable[None]]],
+        Callable[[Context[RedactionEvent]], Awaitable[None]],
+    ]:
+        ...
+
+    @overload
+    def redaction(
+        self,
+        func: Callable[[Context[RedactionEvent]], Awaitable[None]],
+        *,
+        room: str | None = None,
+        once: bool = False,
+        pass_context: Literal[True],
+    ) -> Callable[[Context[RedactionEvent]], Awaitable[None]]:
+        ...
+
+    def redaction(
+        self,
+        func: Callable[[RedactionEvent], Awaitable[None]]
+        | Callable[[Context[RedactionEvent]], Awaitable[None]]
+        | None = None,
+        *,
+        room: str | None = None,
+        once: bool = False,
+        pass_context: bool = False,
+    ) -> (
+        Callable[[RedactionEvent], Awaitable[None]]
+        | Callable[[Context[RedactionEvent]], Awaitable[None]]
+        | Callable[
+            [Callable[[RedactionEvent], Awaitable[None]]],
+            Callable[[RedactionEvent], Awaitable[None]],
+        ]
+        | Callable[
+            [Callable[[Context[RedactionEvent]], Awaitable[None]]],
+            Callable[[Context[RedactionEvent]], Awaitable[None]],
+        ]
+    ):
+        """Create a redaction observer."""
+        if pass_context:
+            # It's the same as in the previous method
+            return self(func, room=room, once=once, on=RedactionEvent)  # type: ignore
+        if func is None:
+
+            def decorator(
+                func: Callable[[RedactionEvent], Awaitable[None]]
+            ) -> Callable[[RedactionEvent], Awaitable[None]]:
+                return self.redaction(func, room=room, once=once)
+
+            return decorator
+
+        self(lambda ctx: func(ctx.event), room=room, once=once, on=RedactionEvent)  # type: ignore
         return func

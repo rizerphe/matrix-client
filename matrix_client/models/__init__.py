@@ -1,7 +1,7 @@
 from .attachment import Attachment
 from .event import Event
 from .message_edit_event import MessageEditEvent
-from .message_event import MessageEvent
+from .message_event import MessageEvent, MessageType
 from .myself import Myself
 from .redaction_event import RedactionEvent
 from .room import Room
@@ -13,6 +13,7 @@ __all__ = [
     "Event",
     "MessageEditEvent",
     "MessageEvent",
+    "MessageType",
     "Myself",
     "RedactionEvent",
     "Room",
